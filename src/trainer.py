@@ -7,7 +7,7 @@ import copy
 import time
 import pickle
 
-import matplotlib.pyplot as plt
+# Unused plotting dependency removed.
 from contextlib import contextmanager
 
 
@@ -108,6 +108,7 @@ def model_train(tra_data_loader, val_data_loader, test_data_loader, model_joint,
     best_epoch = {f'Best_epoch_HR@{k}': -1 for k in metric_ks}
     best_epoch.update({f'Best_epoch_NDCG@{k}': -1 for k in metric_ks})
 
+    best_model = copy.deepcopy(model_joint)
     bad_count = 0
 
     average_epoch_losses = []
@@ -214,6 +215,7 @@ def model_train(tra_data_loader, val_data_loader, test_data_loader, model_joint,
         best_model = copy.deepcopy(model_joint)
     
     
+    best_model.eval()
     top_100_item = []
     with torch.no_grad():
         test_metrics_dict = {f'HR@{k}': [] for k in metric_ks}

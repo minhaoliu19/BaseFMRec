@@ -17,7 +17,7 @@ import itertools
 from copy import deepcopy
 import multiprocessing
 
-os.environ["CUDA_VISIBLE_DEVICES"] = "7"
+os.environ.setdefault("CUDA_VISIBLE_DEVICES", "0")
 
 
 parser = argparse.ArgumentParser()
@@ -92,7 +92,7 @@ def user_num_create(args, user_num):
 
 def main(args,logger):    
     fix_random_seed_as(args.random_seed)
-    path_data = '../datasets/data/' + args.dataset + '/dataset.pkl'
+    path_data = os.path.join(os.path.dirname(__file__), '..', 'datasets', 'data', args.dataset, 'dataset.pkl')
     with open(path_data, 'rb') as f:
         data_raw = pickle.load(f)
     
@@ -109,6 +109,11 @@ def main(args,logger):
     rec_fm_joint_model = Att_FM_model(FM_rec, args)
     
     best_model, test_results = model_train(tra_data_loader, val_data_loader, test_data_loader, rec_fm_joint_model, args, logger)
+    import json
+    output = os.path.join(args.log_file, args.dataset)
+    torch.save({'model_state_dict': best_model.state_dict(), 'args': vars(args), 'test_metrics': test_results}, os.path.join(output, 'best_model.pt'))
+    with open(os.path.join(output, 'results.json'), 'w') as f:
+        json.dump({'args': vars(args), 'test_metrics': test_results}, f, indent=2)
 
 
 if __name__ == '__main__':

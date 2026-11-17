@@ -1,0 +1,21 @@
+# Local environments and caches
+.venv/
+.cache/
+__pycache__/
+*.py[cod]
+.idea/
+.vscode/
+# Training artifacts
+log/
+runs/
+*.pt
+*.pth
+*.ckpt
+# Downloaded archives and machine-specific reports
+/source.zip
+/repo.zip
+/gpu_verification.json
+# Local credentials
+.env
+.env.*
+!.env.example

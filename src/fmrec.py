@@ -4,7 +4,7 @@ import numpy as np
 import math
 import torch
 import torch.nn.functional as F
-from timm.models.vision_transformer import PatchEmbed, Attention, Mlp
+# Unused timm imports removed.
 
 from scipy import integrate
 from scipy.stats import norm
