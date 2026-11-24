@@ -1,10 +1,15 @@
+"""FMRec 原有核心：目标表示预测、流路径训练和 Euler 反向积分。
+
+这里保留原计算逻辑。流时间 t 是生成路径坐标，不是用户行为时间戳；
+兴趣生命周期使用的交互位置间隔由另一个模块处理。
+"""
 import torch.nn as nn
 import torch as th
 import numpy as np
 import math
 import torch
 import torch.nn.functional as F
-# Unused timm imports removed.
+from timm.models.vision_transformer import PatchEmbed, Attention, Mlp
 
 from scipy import integrate
 from scipy.stats import norm
@@ -84,6 +89,7 @@ class MultiHeadedAttention(nn.Module):
         nn.init.xavier_normal_(self.w_layer.weight)
 
     def forward(self, q, k, v, mask=None):
+        # 沿用官方 mask 广播方式；它不是新增的三角因果掩码实现。
         batch_size = q.shape[0]
         q, k, v = [l(x).view(batch_size, -1, self.num_heads, self.size_head).transpose(1, 2) for l, x in zip(self.linear_layers, (q, k, v))]
         corr = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(q.size(-1))
@@ -213,6 +219,7 @@ class FM_xstart(nn.Module):
 
         
     def forward(self, rep_item, x_t, t, mask_seq):
+        # 将噪声状态及流时间融合进历史条件；保留官方随机扰动方式。
         emb_t = self.time_embed(self.timestep_embedding(t, self.hidden_size))
         
         lambda_uncertainty = th.normal(mean=th.full(rep_item.shape, self.lambda_uncertainty), std=th.full(rep_item.shape, self.lambda_uncertainty)).to(x_t.device)
@@ -292,6 +299,7 @@ class FMRec(nn.Module):
             return x, nfe
         
     def euler_sampler(self, item_rep, mask_seq, z0):
+        """沿路径做固定步数 Euler 更新；固定积分形式不等于全流程无随机数。"""
 
         with torch.no_grad():
 
@@ -317,6 +325,7 @@ class FMRec(nn.Module):
                 
                 ## Rectified Flow
                 V = pred - z0       
+                # 本实现预测目标表示，再与起点噪声之差构造更新方向。
 
                 # #### Cosine
                 # half_pi = math.pi / 2       
@@ -371,6 +380,7 @@ class FMRec(nn.Module):
 
         
     def q_sample_rf(self, x_start, t, z0, mask=None):
+        """沿用官方代码的插值方向：t=0 为噪声，t=1 为目标表示。"""
 
         assert z0.shape == x_start.shape
 

@@ -1,3 +1,8 @@
+"""FMRec 外层：物品表示、原联合目标及可选的兴趣条件注入。
+
+新增模块在 LayerNorm 后作用于历史表示；目标物品仍由原 FMRec 生成，
+最终以生成向量和物品向量的内积打分，而非直接用兴趣等级作推荐概率。
+"""
 import torch.nn as nn
 import torch
 import math
@@ -8,6 +13,7 @@ import numpy as np
 import torch as th
 
 import time
+from interest_lifecycle import InteractionLifecycle
 
 
 class LayerNorm(nn.Module):
@@ -41,6 +47,11 @@ class Att_FM_model(nn.Module):
         self.loss_ce_rec = nn.CrossEntropyLoss(reduction='none')
         self.loss_mse = nn.MSELoss()
         self.mask_ratio = args.mask_ratio
+        self.interest_lifecycle = None
+        if getattr(args, 'interest_lifecycle', False):
+            self.interest_lifecycle = InteractionLifecycle(
+                args.hidden_size, args.num_interests, args.interest_promote,
+                args.interest_degrade_gap, args.interest_repromote, args.interest_temperature)
 
 
     def fm_pre(self, item_rep, tag_emb, mask_seq):
@@ -134,6 +145,7 @@ class Att_FM_model(nn.Module):
         return sparse_matrix
 
     def balanced_mse_loss(self, target, output, mask_ratio=1.0):
+        """沿用官方重建损失：保留正例并抽取部分零位置后计算 MSE。"""
 
         target_shape = target.shape
 
@@ -163,7 +175,7 @@ class Att_FM_model(nn.Module):
         return mse_loss
 
 
-    def forward(self, sequence, tag, forward_mse_time = 0, train_flag=True): 
+    def forward(self, sequence, tag, forward_mse_time = 0, train_flag=True, history=None):
         seq_length = sequence.size(1)
 
         item_embeddings = self.item_embeddings(sequence)
@@ -180,6 +192,12 @@ class Att_FM_model(nn.Module):
         item_embeddings = item_embeddings    ####
 
         item_embeddings = self.LayerNorm(item_embeddings)
+        if self.interest_lifecycle is not None:
+            # 生命周期只能看到完整历史，不读取下面用于训练监督的 tag。
+            if history is None:
+                raise ValueError('Lifecycle mode requires the full observed history prefix')
+            item_embeddings = self.interest_lifecycle(
+                item_embeddings, sequence, history, self.item_embeddings)
         
         mask_seq = (sequence>0).float()
 

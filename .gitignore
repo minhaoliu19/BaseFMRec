@@ -1,21 +1,38 @@
-# Local environments and caches
-.venv/
-.cache/
+# 本地解释器、IDE 和缓存不属于源代码。
+/.venv/
+/.python310/
+/.idea/
+/.vscode/
 __pycache__/
 *.py[cod]
-.idea/
-.vscode/
-# Training artifacts
-log/
+.pytest_cache/
+.cache/
+.coverage
+
+# 原始／预处理数据和训练产物体积较大，保留在本机。
+/datasets/data/
+/src/log/
+/log/
 runs/
-*.pt
-*.pth
-*.ckpt
-# Downloaded archives and machine-specific reports
 /source.zip
 /repo.zip
 /gpu_verification.json
-# Local credentials
+*.pkl
+*.pt
+*.pth
+*.ckpt
+*.onnx
+*.npz
+*.npy
+
+# 本地认证和环境文件不得进入仓库。
 .env
 .env.*
 !.env.example
+*.pem
+*.key
+*.tmp
+
+# 操作系统生成文件。
+Thumbs.db
+.DS_Store
